@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect, Suspense, useMemo } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { 
   Calendar, 
   MapPin, 
   ArrowLeft, 
-  ChevronRight, 
   Ticket, 
   CreditCard,
   ShieldCheck,
@@ -17,7 +16,6 @@ import {
 import { SeatGrid } from '@/components/seat/seat-grid'
 import { useRealtimeSeats } from '@/lib/hooks/use-realtime-seats'
 import { Seat, SeatSelection, TicketType } from '@/types'
-import { cn } from '@/lib/utils'
 
 function SeatSelectionContent() {
   const searchParams = useSearchParams()
@@ -103,9 +101,7 @@ function SeatSelectionContent() {
     ))
   }
 
-  const totalPrice = useMemo(() => {
-    return selectedSeats.reduce((sum, s) => sum + s.price, 0)
-  }, [selectedSeats])
+
 
   if (fetchingData) {
     return (

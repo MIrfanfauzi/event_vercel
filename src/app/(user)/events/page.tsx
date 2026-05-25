@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -8,13 +8,12 @@ import {
   Search,
   Filter, 
   MapPin, 
-  ChevronRight, 
   Star, 
   Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export default function EventListPage() {
+function EventListContent() {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -248,5 +247,27 @@ export default function EventListPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function EventListLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-6 bg-[#0F172A]">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Star className="w-6 h-6 text-teal-500 animate-pulse" />
+        </div>
+      </div>
+      <p className="text-teal-500/50 font-black tracking-[0.3em] uppercase text-[10px]">Initializing Experience...</p>
+    </div>
+  )
+}
+
+export default function EventListPage() {
+  return (
+    <Suspense fallback={<EventListLoading />}>
+      <EventListContent />
+    </Suspense>
   )
 }

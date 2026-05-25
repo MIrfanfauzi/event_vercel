@@ -11,7 +11,6 @@ import {
   Baby, 
   Heart, 
   Trash2, 
-  Info,
   ChevronRight,
   Armchair
 } from 'lucide-react'

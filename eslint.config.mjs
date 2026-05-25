@@ -19,6 +19,7 @@ const eslintConfig = [
       "out/**",
       "coverage/**",
       "stripe.exe",
+      "next-env.d.ts",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
