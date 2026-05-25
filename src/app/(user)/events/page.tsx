@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -12,6 +12,7 @@ import {
   Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAnalytics, useScrollDepth } from '@/lib/analytics/hooks'
 
 function EventListContent() {
   const [events, setEvents] = useState<any[]>([])
@@ -21,6 +22,26 @@ function EventListContent() {
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedGenre, setSelectedGenre] = useState('All')
+
+  // Usability Analytics
+  const { trackEvent } = useAnalytics()
+  useScrollDepth('search_scroll_depth')
+
+  const hasFocusedSearch = useRef(false)
+  const hasStartedInput = useRef(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    trackEvent('search_visible', { component: 'Search Input' })
+    trackEvent('category_filter_visible', { component: 'Genre Category Buttons' })
+
+    if (typeof document !== 'undefined') {
+      const ref = document.referrer
+      if (ref && ref.includes('/events/')) {
+        trackEvent('category_navigation_back', { previousPage: ref })
+      }
+    }
+  }, [trackEvent])
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '')
@@ -120,7 +141,28 @@ function EventListContent() {
             <input 
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (!hasFocusedSearch.current) {
+                  trackEvent('search_focus')
+                  hasFocusedSearch.current = true
+                }
+              }}
+              onChange={(e) => {
+                const val = e.target.value
+                setSearchQuery(val)
+
+                if (val.length > 0 && !hasStartedInput.current) {
+                  trackEvent('search_input_started', { firstChar: val[0] })
+                  hasStartedInput.current = true
+                }
+
+                if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+                if (val.trim().length > 0) {
+                  searchTimeoutRef.current = setTimeout(() => {
+                    trackEvent('search_completed', { finalQuery: val })
+                  }, 1000)
+                }
+              }}
               placeholder="Search Hamlet, Jazz Festival, concert..."
               className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 pr-12 text-sm font-bold text-white focus:bg-white/10 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all placeholder:text-slate-600"
             />
@@ -131,7 +173,10 @@ function EventListContent() {
             {genres.map((genre) => (
               <button 
                 key={genre}
-                onClick={() => setSelectedGenre(genre)}
+                onClick={() => {
+                  setSelectedGenre(genre)
+                  trackEvent('category_selected', { genre })
+                }}
                 className={cn(
                   "px-6 py-2.5 rounded-xl text-[11px] font-black transition-all uppercase tracking-widest",
                   selectedGenre === genre 
@@ -224,6 +269,24 @@ function EventListContent() {
                             </div>
                             <Link 
                               href={`/events/${event.slug}`}
+                              onClick={() => {
+                                trackEvent('category_event_clicked', { 
+                                  title: event.title, 
+                                  genre: event.genre || 'Live', 
+                                  slug: event.slug 
+                                })
+
+                                const isDrama = (event.genre || '').toLowerCase().includes('dram') || 
+                                                (event.genre || '').toLowerCase().includes('drama') ||
+                                                selectedGenre.toLowerCase().includes('dram')
+                                
+                                if (isDrama) {
+                                  trackEvent('category_task_completed', { 
+                                    success: true, 
+                                    message: 'User clicked drama event details' 
+                                  })
+                                }
+                              }}
                               className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-teal-500 hover:text-slate-900 transition-all shadow-xl active:scale-95"
                             >
                               View Details

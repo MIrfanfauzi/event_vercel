@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Armchair
 } from 'lucide-react'
+import { logEvent } from '../../lib/analytics/tracker'
 
 interface SeatGridProps {
   seatingLayout: SeatingLayout
@@ -65,7 +66,12 @@ const SeatComponent: React.FC<SeatComponentProps> = ({
   }
 
   const handleClick = () => {
-    if (isBooked || readOnly) return
+    if (isBooked || readOnly) {
+      if (isBooked) {
+        logEvent('seat_wrong_selected', { reason: 'Clicked booked seat', seatId: seat.id, seatName: `${seat.row}${seat.number}` })
+      }
+      return
+    }
     if (isSelected) {
       onDeselect()
     } else {
@@ -108,6 +114,12 @@ const TicketTypeSelector: React.FC<{
   onSeatDeselect: (seatId: string) => void
   checkoutUrl?: string
 }> = ({ selectedSeats, onTicketTypeChange, onSeatDeselect, checkoutUrl }) => {
+  React.useEffect(() => {
+    if (selectedSeats.length > 0) {
+      logEvent('checkout_button_visible', { selectedSeatsCount: selectedSeats.length })
+    }
+  }, [selectedSeats.length])
+
   if (selectedSeats.length === 0) return null
 
   return (
@@ -203,6 +215,17 @@ const TicketTypeSelector: React.FC<{
           {checkoutUrl ? (
             <Link 
               href={selectedSeats.length > 0 ? checkoutUrl : "#"}
+              onClick={() => {
+                const selectTime = localStorage.getItem('eventseats_first_seat_select_time')
+                const duration = selectTime ? Date.now() - parseInt(selectTime) : 0
+                logEvent('checkout_clicked', { 
+                  selectedSeatsCount: selectedSeats.length,
+                  totalPrice: selectedSeats.reduce((sum, s) => sum + s.price, 0),
+                  durationSinceSelectionMs: duration,
+                  durationSinceSelectionSec: +(duration / 1000).toFixed(2)
+                })
+                localStorage.removeItem('eventseats_first_seat_select_time')
+              }}
               className={cn(
                 "w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl flex items-center justify-center gap-3 text-center",
                 selectedSeats.length > 0 
@@ -232,6 +255,32 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
   checkoutUrl
 }) => {
   const [defaultTicketType, setDefaultTicketType] = useState<TicketType>(TicketType.ADULT)
+
+  const handleSeatSelectWrapper = (seat: Seat, ticketType: TicketType) => {
+    if (selectedSeats.length === 0) {
+      localStorage.setItem('eventseats_first_seat_select_time', Date.now().toString())
+    }
+    logEvent('seat_selected', { 
+      seatId: seat.id, 
+      seatName: `${seat.row}${seat.number}`, 
+      ticketType, 
+      category: seat.category || 'Reguler' 
+    })
+    onSeatSelect(seat, ticketType)
+  }
+
+  const handleSeatDeselectWrapper = (seatId: string) => {
+    if (selectedSeats.length > 0) {
+      logEvent('checkout_reselect_seat', { action: 'deselect', seatId })
+    }
+    logEvent('seat_deselected', { seatId })
+    onSeatDeselect(seatId)
+  }
+
+  const handleTicketTypeChangeWrapper = (seatId: string, ticketType: TicketType) => {
+    logEvent('checkout_reselect_seat', { action: 'change_type', seatId, ticketType })
+    onTicketTypeChange(seatId, ticketType)
+  }
 
   const seatsByRow = useMemo(() => {
     const grouped: { [row: string]: Seat[] } = {}
@@ -325,8 +374,8 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
                     seat={seat}
                     isSelected={!!selection}
                     isBooked={bookedSeats.includes(seat.id)}
-                    onSelect={() => onSeatSelect(seat, defaultTicketType)}
-                    onDeselect={() => onSeatDeselect(seat.id)}
+                    onSelect={() => handleSeatSelectWrapper(seat, defaultTicketType)}
+                    onDeselect={() => handleSeatDeselectWrapper(seat.id)}
                     selectedTicketType={selection?.ticketType}
                     readOnly={readOnly}
                   />
@@ -351,7 +400,11 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
           { color: 'bg-purple-600 border-purple-700', label: 'Konsesi' },
           { color: 'bg-blue-600 border-blue-700', label: 'Terisi' }
         ].map((l) => (
-          <div key={l.label} className="flex items-center gap-3">
+          <div 
+            key={l.label} 
+            className="flex items-center gap-3"
+            onMouseEnter={() => logEvent('seat_legend_view', { legendItem: l.label })}
+          >
             <div className={cn("w-5 h-5 rounded-md border-2 shadow-sm", l.color)}></div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{l.label}</span>
           </div>
@@ -362,8 +415,8 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
       {!readOnly && (
         <TicketTypeSelector
           selectedSeats={selectedSeats}
-          onTicketTypeChange={onTicketTypeChange}
-          onSeatDeselect={onSeatDeselect}
+          onTicketTypeChange={handleTicketTypeChangeWrapper}
+          onSeatDeselect={handleSeatDeselectWrapper}
           checkoutUrl={checkoutUrl}
         />
       )}

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { logEvent } from '@/lib/analytics/tracker'
 
 function CheckoutContent() {
   const router = useRouter()
@@ -140,6 +141,12 @@ function CheckoutContent() {
 
       // Redirect to Stripe Checkout
       if (data.url) {
+        logEvent('checkout_completed', { 
+          performanceId, 
+          showId, 
+          seatsCount: selections.length,
+          totalPrice: total
+        })
         window.location.href = data.url
       } else {
         throw new Error('Stripe URL tidak ditemukan')

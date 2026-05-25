@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { logEvent, startHoverTimer, endHoverTimer } from '@/lib/analytics/tracker'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -136,6 +137,12 @@ export default function ProfilePage() {
   // Handle Profile Update
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
+    logEvent('profile_save_changes_click', {
+      firstNameChanged: form.firstName !== customer?.firstName,
+      lastNameChanged: form.lastName !== customer?.lastName,
+      phoneChanged: form.phone !== customer?.phone,
+      addressChanged: form.address !== customer?.address
+    })
     try {
       setUpdating(true)
       setMessage(null)
@@ -156,6 +163,7 @@ export default function ProfilePage() {
       const data = await response.json()
 
       if (data.success) {
+        logEvent('profile_update_success', { emailChanged: data.emailChanged })
         setCustomer(data.data)
         if (data.emailChanged && data.newEmail) {
           // Migrate localStorage keys to new email
@@ -240,9 +248,12 @@ export default function ProfilePage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    logEvent('profile_upload_started', { fileName: file.name, fileSize: file.size })
+
     // Limit size to 2.5MB
     if (file.size > 2.5 * 1024 * 1024) {
       alert("Image size must be less than 2.5MB.")
+      logEvent('profile_upload_failed', { reason: 'Image size exceeds 2.5MB limit', fileSize: file.size })
       return
     }
 
@@ -253,6 +264,10 @@ export default function ProfilePage() {
       if (session?.email) {
         localStorage.setItem(`eventseats_avatar_${session.email}`, base64String)
       }
+      logEvent('profile_upload_success', { fileSize: file.size })
+    }
+    reader.onerror = (err) => {
+      logEvent('profile_upload_failed', { reason: 'FileReader error', error: err })
     }
     reader.readAsDataURL(file)
   }
@@ -619,7 +634,7 @@ Thank you for booking with EventSeats!
             {/* Interactive Tab Buttons */}
             <div className="w-full pt-6 border-t border-slate-100 flex flex-col gap-2">
               <button 
-                onClick={() => { setActiveTab('bookings'); setMessage(null); }}
+                onClick={() => { setActiveTab('bookings'); setMessage(null); logEvent('profile_tab_changed', { tab: 'bookings' }); }}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
                   activeTab === 'bookings' 
                     ? 'bg-teal-50 text-teal-700' 
@@ -634,7 +649,7 @@ Thank you for booking with EventSeats!
               </button>
               
               <button 
-                onClick={() => { setActiveTab('profile'); setMessage(null); }}
+                onClick={() => { setActiveTab('profile'); setMessage(null); logEvent('profile_tab_changed', { tab: 'profile_details' }); }}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
                   activeTab === 'profile' 
                     ? 'bg-teal-50 text-teal-700' 
@@ -649,7 +664,7 @@ Thank you for booking with EventSeats!
               </button>
 
               <button 
-                onClick={() => { setActiveTab('security'); setMessage(null); }}
+                onClick={() => { setActiveTab('security'); setMessage(null); logEvent('profile_tab_changed', { tab: 'security' }); }}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
                   activeTab === 'security' 
                     ? 'bg-teal-50 text-teal-700' 
@@ -664,7 +679,7 @@ Thank you for booking with EventSeats!
               </button>
 
               <button 
-                onClick={() => { setActiveTab('payments'); setMessage(null); }}
+                onClick={() => { setActiveTab('payments'); setMessage(null); logEvent('profile_tab_changed', { tab: 'payments' }); }}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
                   activeTab === 'payments' 
                     ? 'bg-teal-50 text-teal-700' 
@@ -875,11 +890,22 @@ Thank you for booking with EventSeats!
                     </span>
                     <span>{message.text}</span>
                   </div>
-                )}
-
-                {/* Profile Photo Uploader */}
+                )}                 {/* Profile Photo Uploader */}
                 <div className="flex flex-col items-center justify-center pb-6 border-b border-slate-100">
-                  <div className="relative group cursor-pointer animate-fade-in" onClick={() => document.getElementById('avatar-upload')?.click()}>
+                  <div 
+                    className="relative group cursor-pointer animate-fade-in" 
+                    onClick={() => {
+                      logEvent('profile_upload_click')
+                      document.getElementById('avatar-upload')?.click()
+                    }}
+                    onMouseEnter={() => {
+                      startHoverTimer('profile_avatar')
+                      logEvent('profile_overlay_visible')
+                    }}
+                    onMouseLeave={() => {
+                      endHoverTimer('profile_avatar', 'profile_avatar_hover')
+                    }}
+                  >
                     <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-teal-50 flex items-center justify-center bg-teal-600/10 relative shadow-inner">
                       {avatar ? (
                         /* eslint-disable-next-line @next/next/no-img-element */

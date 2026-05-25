@@ -16,6 +16,7 @@ import {
 import { SeatGrid } from '@/components/seat/seat-grid'
 import { useRealtimeSeats } from '@/lib/hooks/use-realtime-seats'
 import { Seat, SeatSelection, TicketType } from '@/types'
+import { logEvent } from '@/lib/analytics/tracker'
 
 function SeatSelectionContent() {
   const searchParams = useSearchParams()
@@ -30,6 +31,39 @@ function SeatSelectionContent() {
 
   // Realtime hook
   const { bookedSeats } = useRealtimeSeats(performanceId || '')
+
+  // Usability scroll misclick tracking
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    logEvent('seat_selection_page_view')
+
+    let lastScrollY = window.scrollY
+    let totalScrollTravel = 0
+    let scrollLogged = false
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      const travel = Math.abs(currentScrollY - lastScrollY)
+      totalScrollTravel += travel
+      lastScrollY = currentScrollY
+
+      const limit = window.innerHeight * 3
+      if (totalScrollTravel > limit && !scrollLogged) {
+        logEvent('checkout_misclick_scroll', { 
+          totalScrollTravelPx: totalScrollTravel,
+          limitPx: limit,
+          message: 'User scrolled excessively (>3x viewport height) on seat selection'
+        })
+        scrollLogged = true
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   useEffect(() => {
     if (!performanceId || !showId) {
