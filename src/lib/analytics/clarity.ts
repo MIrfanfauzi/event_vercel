@@ -11,6 +11,7 @@ export function initClarity(clarityId?: string): void {
 
   try {
     Clarity.init(targetId);
+    Clarity.consentV2(); // Grant consent to record and stream session details instantly
     console.log(`Microsoft Clarity initialized with ID: ${targetId}`);
   } catch (error) {
     console.error('Error loading Microsoft Clarity library:', error);
