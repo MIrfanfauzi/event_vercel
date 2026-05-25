@@ -6,11 +6,9 @@ import { exportToCSV, exportToJSON } from '@/lib/analytics/export';
 import { getEvents, clearEvents, onEventLogged, onThinkAloudLogged } from '@/lib/analytics/tracker';
 import { resetSession } from '@/lib/analytics/session';
 import { 
-  Play, 
   RotateCcw, 
   Download, 
   ChevronDown, 
-  ChevronUp, 
   Settings, 
   MessageSquare, 
   Smile, 

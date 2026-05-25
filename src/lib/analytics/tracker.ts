@@ -24,7 +24,7 @@ export function getCssSelector(el: HTMLElement | null): string {
   if (!el) return 'unknown';
   if (el.id) return `#${el.id}`;
   
-  let path: string[] = [];
+  const path: string[] = [];
   let current: HTMLElement | null = el;
   while (current && current.nodeType === Node.ELEMENT_NODE) {
     let selector = current.nodeName.toLowerCase();
