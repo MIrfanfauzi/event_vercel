@@ -610,29 +610,6 @@ Thank you for booking with EventSeats!
         <aside className="md:col-span-4 lg:col-span-3">
           <div className="bg-white border border-slate-100 rounded-2xl p-8 flex flex-col items-center text-center space-y-6 sticky top-28 shadow-sm">
             
-            {/* Interactive Uploadable Avatar */}
-            <div className="relative group cursor-pointer animate-fade-in" onClick={() => document.getElementById('avatar-upload')?.click()}>
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-teal-50 flex items-center justify-center bg-teal-600/10 relative shadow-inner">
-                {avatar ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={avatar} className="w-full h-full object-cover" alt="Profile" />
-                ) : (
-                  <span className="material-symbols-outlined text-[64px] text-teal-600">person</span>
-                )}
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-black uppercase tracking-wider gap-1">
-                  <span className="material-symbols-outlined text-lg">photo_camera</span>
-                  <span>Change Photo</span>
-                </div>
-              </div>
-              <input 
-                id="avatar-upload"
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handleAvatarUpload}
-              />
-            </div>
 
             <div className="space-y-1">
               <h1 className="text-xl font-bold text-slate-900 leading-tight">{displayName}</h1>
@@ -899,6 +876,32 @@ Thank you for booking with EventSeats!
                     <span>{message.text}</span>
                   </div>
                 )}
+
+                {/* Profile Photo Uploader */}
+                <div className="flex flex-col items-center justify-center pb-6 border-b border-slate-100">
+                  <div className="relative group cursor-pointer animate-fade-in" onClick={() => document.getElementById('avatar-upload')?.click()}>
+                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-teal-50 flex items-center justify-center bg-teal-600/10 relative shadow-inner">
+                      {avatar ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={avatar} className="w-full h-full object-cover" alt="Profile" />
+                      ) : (
+                        <span className="material-symbols-outlined text-[64px] text-teal-600">person</span>
+                      )}
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-black uppercase tracking-wider gap-1 text-center">
+                        <span className="material-symbols-outlined text-lg">photo_camera</span>
+                        <span>Change Photo</span>
+                      </div>
+                    </div>
+                    <input 
+                      id="avatar-upload"
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleAvatarUpload}
+                    />
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">

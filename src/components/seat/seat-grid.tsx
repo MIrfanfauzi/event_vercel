@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import { Seat, SeatSelection, TicketType, SeatingLayout } from '../../types'
@@ -25,6 +26,7 @@ interface SeatGridProps {
   className?: string
   readOnly?: boolean
   prices?: Record<string, number>
+  checkoutUrl?: string
 }
 
 interface SeatComponentProps {
@@ -105,7 +107,8 @@ const TicketTypeSelector: React.FC<{
   selectedSeats: SeatSelection[]
   onTicketTypeChange: (seatId: string, ticketType: TicketType) => void
   onSeatDeselect: (seatId: string) => void
-}> = ({ selectedSeats, onTicketTypeChange, onSeatDeselect }) => {
+  checkoutUrl?: string
+}> = ({ selectedSeats, onTicketTypeChange, onSeatDeselect, checkoutUrl }) => {
   if (selectedSeats.length === 0) return null
 
   return (
@@ -182,18 +185,36 @@ const TicketTypeSelector: React.FC<{
       </div>
 
       <div className="bg-slate-900 p-6 text-white">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Total Pembayaran</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black">£{selectedSeats.reduce((sum, s) => sum + s.price, 0).toFixed(2)}</span>
-              <span className="text-slate-400 text-sm">GBP</span>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected</span>
+              <span className="text-sm font-bold text-white">{selectedSeats.length} Kursi</span>
+            </div>
+            <div className="h-10 w-[1px] bg-white/10 hidden sm:block"></div>
+            <div>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Total Pembayaran</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black">£{selectedSeats.reduce((sum, s) => sum + s.price, 0).toFixed(2)}</span>
+                <span className="text-slate-400 text-sm">GBP</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
-            <Info className="w-3 h-3" />
-            TERMASUK PPN & BIAYA LAYANAN
-          </div>
+          
+          {checkoutUrl ? (
+            <Link 
+              href={selectedSeats.length > 0 ? checkoutUrl : "#"}
+              className={cn(
+                "w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl flex items-center justify-center gap-3 text-center",
+                selectedSeats.length > 0 
+                ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/35" 
+                : "bg-slate-800 text-slate-500 cursor-not-allowed"
+              )}
+            >
+              Checkout
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          ) : null}
         </div>
       </div>
     </motion.div>
@@ -208,7 +229,8 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
   onTicketTypeChange,
   bookedSeats,
   className,
-  readOnly = false
+  readOnly = false,
+  checkoutUrl
 }) => {
   const [defaultTicketType, setDefaultTicketType] = useState<TicketType>(TicketType.ADULT)
 
@@ -254,10 +276,18 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
                 key={t.type}
                 onClick={() => setDefaultTicketType(t.type)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all",
-                  defaultTicketType === t.type 
-                    ? "bg-slate-900 text-white shadow-lg" 
-                    : "text-slate-600 hover:bg-slate-50"
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                  t.type === TicketType.ADULT 
+                    ? defaultTicketType === TicketType.ADULT 
+                      ? "bg-teal-600 text-white border-teal-700 shadow-lg shadow-teal-500/20 scale-[1.02]" 
+                      : "text-teal-600 border-teal-200/60 bg-teal-50/10 hover:bg-teal-50"
+                    : t.type === TicketType.CHILD 
+                    ? defaultTicketType === TicketType.CHILD 
+                      ? "bg-emerald-500 text-white border-emerald-600 shadow-lg shadow-emerald-500/20 scale-[1.02]" 
+                      : "text-emerald-600 border-emerald-200/60 bg-emerald-50/10 hover:bg-emerald-50"
+                    : defaultTicketType === TicketType.CONCESSION 
+                      ? "bg-purple-600 text-white border-purple-700 shadow-lg shadow-purple-500/20 scale-[1.02]" 
+                      : "text-purple-600 border-purple-200/60 bg-purple-50/10 hover:bg-purple-50"
                 )}
               >
                 <t.icon className="w-4 h-4" />
@@ -335,6 +365,7 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
           selectedSeats={selectedSeats}
           onTicketTypeChange={onTicketTypeChange}
           onSeatDeselect={onSeatDeselect}
+          checkoutUrl={checkoutUrl}
         />
       )}
 

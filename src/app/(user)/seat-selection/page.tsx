@@ -168,29 +168,6 @@ function SeatSelectionContent() {
               </div>
             </div>
           </div>
-
-          <div className="hidden lg:flex items-center gap-8">
-             <div className="flex flex-col items-end">
-               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected</span>
-               <span className="text-sm font-bold text-slate-900">{selectedSeats.length} Kursi</span>
-             </div>
-             <div className="h-10 w-[1px] bg-slate-100"></div>
-             <div className="flex items-center gap-4">
-                <span className="text-2xl font-black text-slate-900">£{totalPrice.toFixed(2)}</span>
-                <Link 
-                  href={selectedSeats.length > 0 ? `/checkout?performanceId=${performanceId}&showId=${showId}&selections=${encodeURIComponent(JSON.stringify(selectedSeats.map(s => ({ seatId: s.seatId, ticketType: s.ticketType }))))}` : "#"}
-                  className={cn(
-                    "px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl flex items-center gap-3",
-                    selectedSeats.length > 0 
-                    ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/30" 
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  )}
-                >
-                  Checkout
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-             </div>
-          </div>
         </div>
       </nav>
 
@@ -206,6 +183,7 @@ function SeatSelectionContent() {
                 onSeatSelect={handleSeatSelect}
                 onSeatDeselect={handleSeatDeselect}
                 onTicketTypeChange={handleTicketTypeChange}
+                checkoutUrl={`/checkout?performanceId=${performanceId}&showId=${showId}&selections=${encodeURIComponent(JSON.stringify(selectedSeats.map(s => ({ seatId: s.seatId, ticketType: s.ticketType }))))}`}
               />
             </div>
           </div>
@@ -283,27 +261,7 @@ function SeatSelectionContent() {
         </div>
       </main>
 
-      {/* Mobile Sticky Checkout */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 p-6 bg-white border-t border-slate-100 z-50">
-        <div className="flex items-center justify-between gap-6">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Pembayaran</p>
-            <p className="text-2xl font-black text-slate-900">£{totalPrice.toFixed(2)}</p>
-          </div>
-          <Link 
-            href={selectedSeats.length > 0 ? `/checkout?performanceId=${performanceId}&showId=${showId}&selections=${encodeURIComponent(JSON.stringify(selectedSeats.map(s => ({ seatId: s.seatId, ticketType: s.ticketType }))))}` : "#"}
-            className={cn(
-              "flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl flex items-center justify-center gap-3 text-center",
-              selectedSeats.length > 0 
-              ? "bg-blue-600 text-white hover:bg-blue-700" 
-              : "bg-slate-100 text-slate-400 cursor-not-allowed"
-            )}
-          > 
-            Lanjut ke Checkout
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
+
     </div>
   )
 }
