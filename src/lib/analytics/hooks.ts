@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { logEvent, logThinkAloud, startHoverTimer, endHoverTimer } from './tracker';
+import { logEvent, startHoverTimer, endHoverTimer } from './tracker';
 import { getOrCreateParticipantId, setParticipantId as setSessionParticipantId, getSessionDuration } from './session';
 
 export function useAnalytics() {
@@ -19,15 +19,10 @@ export function useAnalytics() {
     return logEvent(eventName, metadata);
   }, []);
 
-  const trackThinkAloud = useCallback((type: 'friction' | 'delight' | 'comment', text: string) => {
-    return logThinkAloud(type, text);
-  }, []);
-
   return {
     participantId,
     changeParticipantId,
     trackEvent,
-    trackThinkAloud,
     getDuration: getSessionDuration
   };
 }
@@ -82,14 +77,12 @@ export function useScrollDepth(scrollEventName: string) {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    // Run once on load in case the page is short or pre-scrolled
     handleScroll();
 
     return () => {
       if (throttleTimer) clearTimeout(throttleTimer);
       window.removeEventListener('scroll', handleScroll);
       
-      // Log final max scroll depth when component unmounts
       if (maxScrollDepth.current > 0) {
         logEvent(`${scrollEventName}_final`, { 
           maxScrollDepth: maxScrollDepth.current 
@@ -101,9 +94,6 @@ export function useScrollDepth(scrollEventName: string) {
 
 /**
  * Hook to track hover duration on a React element.
- * Usage:
- *   const hoverProps = useHoverDuration('profile_avatar_hover', { section: 'avatar' });
- *   <div {...hoverProps} />
  */
 export function useHoverDuration(eventName: string, metadata?: Record<string, any>) {
   const hoverKey = useRef<string>(`hover_${Math.random().toString(36).substr(2, 9)}`);

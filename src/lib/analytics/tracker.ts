@@ -1,11 +1,4 @@
-import { UsabilityEvent, ThinkAloudMarker } from './types';
-import { getSessionDuration } from './session';
-import { trackClarityEvent } from './clarity';
-
-let eventsCache: UsabilityEvent[] = [];
-let thinkAloudCache: ThinkAloudMarker[] = [];
-const eventListeners: ((event: UsabilityEvent) => void)[] = [];
-const thinkAloudListeners: ((marker: ThinkAloudMarker) => void)[] = [];
+import { trackClarityEvent, setClarityUserProperties } from './clarity';
 
 // For rage click detection
 interface ClickLog {
@@ -29,7 +22,6 @@ export function getCssSelector(el: HTMLElement | null): string {
   while (current && current.nodeType === Node.ELEMENT_NODE) {
     let selector = current.nodeName.toLowerCase();
     if (current.className) {
-      // Clean up whitespace and classes
       const classes = current.className.split(/\s+/).filter(c => c && !c.includes(':')).join('.');
       if (classes) {
         selector += `.${classes}`;
@@ -38,7 +30,6 @@ export function getCssSelector(el: HTMLElement | null): string {
     path.unshift(selector);
     current = current.parentElement;
     
-    // Stop traversing if we reach body or layout wrappers to keep selectors readable
     if (current?.nodeName.toLowerCase() === 'body' || path.length >= 4) {
       break;
     }
@@ -53,25 +44,19 @@ export function isElementInteractive(el: HTMLElement | null): boolean {
   const interactiveTags = ['a', 'button', 'input', 'select', 'textarea', 'label', 'option', 'details', 'summary'];
   const tagName = el.tagName.toLowerCase();
   
-  // Direct tag check
   if (interactiveTags.includes(tagName)) return true;
 
-  // Role and click checks
   if (el.getAttribute('role') === 'button' || el.getAttribute('role') === 'link') return true;
   if (el.hasAttribute('onclick') || el.hasAttribute('href')) return true;
   if (el.tabIndex >= 0) return true;
 
-  // Check computed cursor style (e.g. if tailwind hover:text-teal-400 cursor-pointer is applied)
   if (typeof window !== 'undefined') {
     try {
       const style = window.getComputedStyle(el);
       if (style.cursor === 'pointer') return true;
-    } catch {
-      // Ignore style resolution errors
-    }
+    } catch {}
   }
 
-  // Traversal upwards to 3 levels (check if clicking a child inside a button/link)
   let parent = el.parentElement;
   let depth = 0;
   while (parent && depth < 3) {
@@ -97,113 +82,26 @@ export function logEvent(
   x?: number,
   y?: number,
   targetSelector?: string
-): UsabilityEvent {
-  const eventId = `EV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-  const timestamp = new Date().toISOString();
-  const sessionDuration = getSessionDuration();
-  const pageUrl = typeof window !== 'undefined' ? window.location.pathname + window.location.search : 'SERVER';
-
-  const event: UsabilityEvent = {
-    eventId,
-    timestamp,
-    sessionDuration,
-    eventName,
-    pageUrl,
-    x,
-    y,
-    targetSelector,
-    metadata
-  };
-
-  // Add to cache
-  eventsCache.push(event);
-  
-  // Persist local storage backup
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('eventseats_events_log', JSON.stringify(eventsCache));
-  }
-
-  // Log to Microsoft Clarity
+): void {
+  // 1. Dispatch custom event to Microsoft Clarity
   trackClarityEvent(eventName);
 
-  // Notify listeners
-  eventListeners.forEach(listener => listener(event));
-
-  console.log(`[Usability Tracker] Event logged: ${eventName}`, event);
-  return event;
-}
-
-export function logThinkAloud(type: 'friction' | 'delight' | 'comment', text: string): ThinkAloudMarker {
-  const marker: ThinkAloudMarker = {
-    timestamp: new Date().toISOString(),
-    sessionDuration: getSessionDuration(),
-    type,
-    text
-  };
-
-  thinkAloudCache.push(marker);
-
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('eventseats_think_aloud_log', JSON.stringify(thinkAloudCache));
+  // 2. Set tags for metadata to allow filtering in recordings
+  if (metadata) {
+    const tags: Record<string, string> = {};
+    Object.entries(metadata).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        tags[key] = String(value);
+      }
+    });
+    setClarityUserProperties(tags);
   }
 
-  // Also log it as a standard usability event for timeline analysis
-  logEvent('think_aloud_marker', { type, text });
-
-  thinkAloudListeners.forEach(listener => listener(marker));
-  return marker;
-}
-
-// Subscribe to events
-export function onEventLogged(callback: (event: UsabilityEvent) => void) {
-  eventListeners.push(callback);
-  return () => {
-    const idx = eventListeners.indexOf(callback);
-    if (idx !== -1) eventListeners.splice(idx, 1);
-  };
-}
-
-export function onThinkAloudLogged(callback: (marker: ThinkAloudMarker) => void) {
-  thinkAloudListeners.push(callback);
-  return () => {
-    const idx = thinkAloudListeners.indexOf(callback);
-    if (idx !== -1) thinkAloudListeners.splice(idx, 1);
-  };
-}
-
-// Retrieve cache
-export function getEvents(): UsabilityEvent[] {
-  if (eventsCache.length === 0 && typeof window !== 'undefined') {
-    const stored = localStorage.getItem('eventseats_events_log');
-    if (stored) {
-      try {
-        eventsCache = JSON.parse(stored);
-      } catch {}
-    }
+  if (targetSelector) {
+    setClarityUserProperties({ last_clicked_selector: targetSelector });
   }
-  return eventsCache;
-}
 
-export function getThinkAloudMarkers(): ThinkAloudMarker[] {
-  if (thinkAloudCache.length === 0 && typeof window !== 'undefined') {
-    const stored = localStorage.getItem('eventseats_think_aloud_log');
-    if (stored) {
-      try {
-        thinkAloudCache = JSON.parse(stored);
-      } catch {}
-    }
-  }
-  return thinkAloudCache;
-}
-
-export function clearEvents(): void {
-  eventsCache = [];
-  thinkAloudCache = [];
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('eventseats_events_log');
-    localStorage.removeItem('eventseats_think_aloud_log');
-  }
-  console.log('[Usability Tracker] Local events logs cleared.');
+  console.log(`[Clarity Usability Tracker] Event: ${eventName}`, { metadata, x, y, targetSelector });
 }
 
 // Rage and Dead Click Detection
@@ -216,34 +114,28 @@ export function handleGlobalClick(e: MouseEvent): void {
   const selector = getCssSelector(target);
   const now = Date.now();
 
-  // 1. Heatmap coordinate logging
+  // 1. Click event
   logEvent('user_click', {
-    x,
-    y,
-    tagName: target.tagName,
-    text: target.innerText?.substring(0, 30) || ''
+    click_x: x,
+    click_y: y,
+    click_tag: target.tagName,
+    click_text: target.innerText?.substring(0, 30) || ''
   }, x, y, selector);
 
   // 2. Dead click detection
   const interactive = isElementInteractive(target);
   if (!interactive) {
     logEvent('dead_click', {
-      x,
-      y,
-      tagName: target.tagName,
-      className: target.className || '',
-      text: target.innerText?.substring(0, 30) || ''
+      dead_click_tag: target.tagName,
+      dead_click_text: target.innerText?.substring(0, 30) || ''
     }, x, y, selector);
   }
 
   // 3. Rage click detection
   clickHistory.push({ timestamp: now, x, y, target });
-  
-  // Prune clicks older than 1.5s
   clickHistory = clickHistory.filter(c => now - c.timestamp <= RAGE_CLICK_MAX_DELAY);
   
   if (clickHistory.length >= RAGE_CLICK_THRESHOLD) {
-    // Check if clicks are close together and on similar targets
     let isRage = true;
     const firstClick = clickHistory[0];
     
@@ -259,14 +151,11 @@ export function handleGlobalClick(e: MouseEvent): void {
 
     if (isRage) {
       logEvent('rage_click', {
-        clicksCount: clickHistory.length,
-        x,
-        y,
-        isInteractive: interactive,
-        targetText: target.innerText?.substring(0, 30) || ''
+        rage_clicks_count: clickHistory.length,
+        rage_click_text: target.innerText?.substring(0, 30) || '',
+        rage_click_interactive: String(interactive)
       }, x, y, selector);
       
-      // Clear click history to prevent repeat rage clicks on next click
       clickHistory = [];
     }
   }
@@ -288,8 +177,8 @@ export function endHoverTimer(key: string, eventName: string, metadata?: Record<
   
   logEvent(eventName, {
     ...metadata,
-    hoverDurationMs: duration,
-    hoverDurationSeconds: +(duration / 1000).toFixed(2)
+    hover_duration_ms: duration,
+    hover_duration_sec: +(duration / 1000).toFixed(2)
   });
   
   return duration;
