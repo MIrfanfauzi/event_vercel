@@ -3,9 +3,9 @@ import Clarity from '@microsoft/clarity';
 export function initClarity(clarityId?: string): void {
   if (typeof window === 'undefined') return;
 
-  const targetId = clarityId || process.env.NEXT_PUBLIC_CLARITY_ID;
+  const targetId = clarityId || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || process.env.NEXT_PUBLIC_CLARITY_ID;
   if (!targetId) {
-    console.warn('Microsoft Clarity ID not found. Clarity will not load. Set NEXT_PUBLIC_CLARITY_ID.');
+    console.warn('Microsoft Clarity ID not found. Clarity will not load. Set NEXT_PUBLIC_CLARITY_PROJECT_ID.');
     return;
   }
 

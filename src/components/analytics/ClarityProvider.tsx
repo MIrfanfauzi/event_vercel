@@ -17,7 +17,7 @@ export function ClarityProvider({ children }: ClarityProviderProps) {
     const session = initializeSession();
 
     // 2. Load Microsoft Clarity
-    const clarityId = process.env.NEXT_PUBLIC_CLARITY_ID || 'demo_clarity_id';
+    const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || process.env.NEXT_PUBLIC_CLARITY_ID || 'demo_clarity_id';
     initClarity(clarityId);
 
     // 3. Set Clarity Custom Dimensions (User Properties)
